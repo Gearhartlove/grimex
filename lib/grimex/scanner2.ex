@@ -100,7 +100,7 @@ defmodule Grimex.Scanner2 do
         %{scanner | line: scanner.line + 1}
 
       "\"" ->
-        string(scanner)
+        string(scanner, [])
 
       " " ->
         scanner
@@ -135,20 +135,27 @@ defmodule Grimex.Scanner2 do
     %{scanner | source: rest, current: current + length(comment)}
   end
 
-  # go until the next " or until the end of the file. 
-  # If I'm at the end with, then it's an unterminated string, return
-  # advance one more time to get the closing " 
-  # add a token
-  defp string(%__MODULE__{source: source, current: current, line: line, start: start} = scanner) do
-    case Enum.split_while(source, &(&1 != "\"")) do
-      {_value, []} ->
-        Error.report("Unterminated string.", %{line: line, where: start})
+  def string(%__MODULE__{source: [], line: line, start: start} = _scanner, _acc) do
+    Error.report("Unterminated String", %{line: line, where: start})
+  end
 
-      {value, ["\"" | rest]} ->
-        # + 1 for the \" we parse off the end
-        %{scanner | source: rest, current: current + length(value) + 1}
-        |> add_token(TokenType.string(), value)
-    end
+  def string(%__MODULE__{source: ["\"" | rest], current: current} = scanner, acc) do
+    value = acc |> Enum.reverse() |> Enum.join()
+
+    scanner
+    |> Map.merge(%{source: rest, current: current + 1})
+    |> add_token(TokenType.string(), value)
+  end
+
+  def string(%__MODULE__{source: ["\n" | rest], current: current, line: line} = scanner, acc) do
+    scanner
+    |> Map.merge(%{source: rest, current: current + 1, line: line + 1})
+    |> string(["\n" | acc])
+  end
+
+  def string(%__MODULE__{} = scanner, acc) do
+    {c, scanner} = advance(scanner)
+    string(scanner, [c | acc])
   end
 
   defp add_token(%__MODULE__{} = scanner, type),
