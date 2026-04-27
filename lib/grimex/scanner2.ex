@@ -1,4 +1,4 @@
-defmodule Grimex.Scanner2 do
+defmodule Grimex.Scanner do
   alias Grimex.TokenType
   alias Grimex.Token
   alias Grimex.Error
@@ -102,6 +102,9 @@ defmodule Grimex.Scanner2 do
       "\"" ->
         string(scanner, [])
 
+      c when c >= "0" and c <= "9" ->
+        number(scanner, c)
+
       " " ->
         scanner
 
@@ -156,6 +159,74 @@ defmodule Grimex.Scanner2 do
   def string(%__MODULE__{} = scanner, acc) do
     {c, scanner} = advance(scanner)
     string(scanner, [c | acc])
+  end
+
+  def number(scanner, c) when is_binary(c) do
+    number(scanner, %{float?: false, vals: [c]})
+  end
+
+  def number(
+        %__MODULE__{source: []} = scanner,
+        acc
+      ) do
+    add_number_token(scanner, acc, [])
+  end
+
+  #  def number(
+  #        %__MODULE__{source: ["." | rest], current: current, line: line} = scanner,
+  #        %{float?: float?} = acc
+  #      ) do
+  #    case float? do
+  #      false -> number(%{scanner | source: rest, current: current + 1}, %{acc | float?: true})
+  #      true -> Error.report("Double '.' specified in float", %{line: line, where: current})
+  #    end
+  #  end
+
+  def number(%__MODULE__{source: [c | rest]} = scanner, acc)
+      when (c < "0" or c > "9") and c != "." do
+    add_number_token(scanner, acc, rest)
+  end
+
+  def number(%__MODULE__{} = scanner, %{float?: float?, vals: vals} = acc) do
+    {c, scanner} = advance(scanner)
+
+    case c do
+      "." ->
+        case float? do
+          false ->
+            number(scanner, %{acc | float?: true, vals: [c | vals]})
+
+          true ->
+            Error.report("Double '.' specified in float", %{
+              line: scanner.line,
+              where: scanner.current
+            })
+        end
+
+      _ ->
+        number(scanner, %{acc | vals: [c | vals]})
+    end
+  end
+
+  defp add_number_token(
+         %__MODULE__{current: current} = scanner,
+         %{float?: float?, vals: vals} = _acc,
+         source
+       ) do
+    val =
+      vals
+      |> Enum.reverse()
+      |> Enum.join()
+      |> then(fn val ->
+        case float? do
+          true -> val |> String.to_float()
+          false -> val |> String.to_integer()
+        end
+      end)
+
+    scanner
+    |> Map.merge(%{source: source, current: current})
+    |> add_token(TokenType.number(), val)
   end
 
   defp add_token(%__MODULE__{} = scanner, type),

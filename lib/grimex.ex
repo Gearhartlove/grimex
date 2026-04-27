@@ -1,6 +1,6 @@
 defmodule Grimex do
-  alias Grimex.Scanner
-  alias Grimex.Error
+  # alias Grimex.Scanner
+  # alias Grimex.Error
 
   def run_file(path) do
     path
@@ -8,26 +8,26 @@ defmodule Grimex do
     |> run()
   end
 
-  def repl() do
-    input = IO.gets("> ") |> String.trim()
+  # def repl() do
+  #   input = IO.gets("> ") |> String.trim()
 
-    case input do
-      "break" ->
-        IO.puts("Breaking from REPL")
+  #   case input do
+  #     "break" ->
+  #       IO.puts("Breaking from REPL")
 
-      text ->
-        case run(text) do
-          {:ok, result} ->
-            IO.puts(result)
+  #     text ->
+  #       case run(text) do
+  #         {:ok, result} ->
+  #           IO.puts(result)
 
-          {:error, reason, meta} ->
-            meta = Map.merge(%{where: "", line: -1}, meta)
-            Error.report(reason, meta)
-        end
+  #         {:error, reason, meta} ->
+  #           meta = Map.merge(%{where: "", line: -1}, meta)
+  #           Error.report(reason, meta)
+  #       end
 
-        repl()
-    end
-  end
+  #       repl()
+  #   end
+  # end
 
   defp run(text) do
     IO.puts("running #{text}")
@@ -35,9 +35,9 @@ defmodule Grimex do
   end
 
   # TODO: working on
-  defp run2(source) do
-    tokens = Scanner.scan(source)
-    IO.inspect(tokens, label: "Tokens")
-    :ok
-  end
+  # defp run2(source) do
+  #   tokens = Scanner.scan(source)
+  #   IO.inspect(tokens, label: "Tokens")
+  #   :ok
+  # end
 end
