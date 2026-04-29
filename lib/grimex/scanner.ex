@@ -172,16 +172,6 @@ defmodule Grimex.Scanner do
     add_number_token(scanner, acc, [])
   end
 
-  #  def number(
-  #        %__MODULE__{source: ["." | rest], current: current, line: line} = scanner,
-  #        %{float?: float?} = acc
-  #      ) do
-  #    case float? do
-  #      false -> number(%{scanner | source: rest, current: current + 1}, %{acc | float?: true})
-  #      true -> Error.report("Double '.' specified in float", %{line: line, where: current})
-  #    end
-  #  end
-
   def number(%__MODULE__{source: [c | rest]} = scanner, acc)
       when (c < "0" or c > "9") and c != "." do
     add_number_token(scanner, acc, rest)
