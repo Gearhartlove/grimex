@@ -85,7 +85,13 @@ defmodule Grimex.Scanner do
         add_token(scanner, TokenType.dot())
 
       "-" ->
-        add_token(scanner, TokenType.minus())
+        case peek(scanner, fn c -> c >= "0" and c <= "9" end) do
+          {true, scanner} ->
+            number(scanner, negative?: true)
+
+          {false, scanner} ->
+            add_token(scanner, TokenType.minus())
+        end
 
       "+" ->
         add_token(scanner, TokenType.plus())
@@ -124,6 +130,36 @@ defmodule Grimex.Scanner do
     {char, %{scanner | source: rest, current: current + 1}}
   end
 
+  defp peek(%__MODULE__{source: [c | _] = source, current: current} = scanner, matcher)
+       when is_function(matcher) do
+    case matcher.(c) do
+      true ->
+        {true, %{scanner | source: source, current: current}}
+
+      false ->
+        {false, scanner}
+    end
+  end
+
+  defp peek(%__MODULE__{source: [c | _] = source, current: current} = scanner, c) do
+    {true, %{scanner | source: source, current: current}}
+  end
+
+  defp peek(scanner, _expected) do
+    {false, scanner}
+  end
+
+  defp match(%__MODULE__{source: [c | rest], current: current} = scanner, matcher)
+       when is_function(matcher) do
+    case matcher.(c) do
+      true ->
+        {true, %{scanner | source: rest, current: current + 1}}
+
+      false ->
+        {false, scanner}
+    end
+  end
+
   defp match(%__MODULE__{source: [expected | rest], current: current} = scanner, expected) do
     {true, %{scanner | source: rest, current: current + 1}}
   end
@@ -159,6 +195,10 @@ defmodule Grimex.Scanner do
   def string(%__MODULE__{} = scanner, acc) do
     {c, scanner} = advance(scanner)
     string(scanner, [c | acc])
+  end
+
+  def number(scanner, negative?: true) do
+    number(scanner, %{float?: false, vals: [], negative?: true})
   end
 
   def number(scanner, c) when is_binary(c) do
@@ -200,9 +240,11 @@ defmodule Grimex.Scanner do
 
   defp add_number_token(
          %__MODULE__{current: current} = scanner,
-         %{float?: float?, vals: vals} = _acc,
+         %{float?: float?, vals: vals} = acc,
          source
        ) do
+    negative? = Map.get(acc, :negative?, false)
+
     val =
       vals
       |> Enum.reverse()
@@ -211,6 +253,12 @@ defmodule Grimex.Scanner do
         case float? do
           true -> val |> String.to_float()
           false -> val |> String.to_integer()
+        end
+      end)
+      |> then(fn val ->
+        case negative? do
+          true -> val * -1
+          false -> val
         end
       end)
 
