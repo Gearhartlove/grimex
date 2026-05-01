@@ -3,6 +3,8 @@ defmodule Grimex.Scanner do
   alias Grimex.Token
   alias Grimex.Error
 
+  import Grimex.Guards
+
   defstruct original: [], source: [], tokens: [], start: 0, current: 0, line: 1
 
   def new(original), do: %__MODULE__{source: original, original: original}
@@ -110,6 +112,9 @@ defmodule Grimex.Scanner do
 
       c when c >= "0" and c <= "9" ->
         number(scanner, c)
+
+      c when is_alphanumeric_char(c) ->
+        identifier_or_keyword(scanner, c)
 
       " " ->
         scanner
@@ -235,6 +240,23 @@ defmodule Grimex.Scanner do
 
       _ ->
         number(scanner, %{acc | vals: [c | vals]})
+    end
+  end
+
+  def identifier_or_keyword(scanner, c) when is_alphanumeric_char(c),
+    do: identifier_or_keyword(scanner, [c])
+
+  def identifier_or_keyword(%__MODULE__{} = scanner, acc) do
+    # do I want to peek here?
+    {char, %__MODULE__{start: start, current: current, original: original} = scanner} =
+      advance(scanner)
+
+    case char do
+      c when is_alphanumeric_char(c) ->
+        identifier_or_keyword(scanner, [c | acc])
+
+      _ ->
+        nil
     end
   end
 
